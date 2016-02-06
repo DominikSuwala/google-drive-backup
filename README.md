@@ -19,13 +19,13 @@ A one-way backup of local folders onto your Google Drive
   4. Credentials -> New Credentials -> OAuth Client ID -> Configure Consent Screen
   5. Fill out the form -> Other -> Save the client secret for later
   6. On the far right, download to client_secret.json in your google-drive-backup folder.
-5. `python backup.py <local folder> <drive folder>`
+5. `python2.7 backup.py <local folder> <drive folder>`
 6. A popup window will show saying authenticated or something like that.
 7. You're done!
 
 ## Syntax
 
-`python backup.py <local folder> <drive folder>`
+`python2.7 backup.py <local folder> <drive folder>`
 
 - **\<local folder\>** The folder that you would like backed up. It can be absolute or relative to the google-drive-backup folder.
 - **\<drive folder\>** The folder on your Google Drive that you want to store your backed up folder. If it doesn't exist, it will be created.

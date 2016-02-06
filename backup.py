@@ -1,6 +1,8 @@
-from google_drive import *
+#!/usr/bin/python
 
-rootFolderPath = 'C:\\stephen\\drive_new'
+import sys, getopt
+from google_drive import *
+import datetime
 
 class File:
 	def __init__(self, name, path, isFolder, timestamp, size):
@@ -11,7 +13,7 @@ class File:
 		self.size = size
 
 def syncFolder(localFolderPath, remoteFolder, allowIncrease = True):
-	print(localFolderPath)
+	print('Checking Folder: ' + localFolderPath)
 
 	''' get local files '''
 	localFiles = {}
@@ -21,7 +23,7 @@ def syncFolder(localFolderPath, remoteFolder, allowIncrease = True):
 
 	''' get remote files '''
 	remoteFiles = remoteFolder.list()
-	
+
 	''' remove any duplicate folders or files '''
 	remoteFilesToTrash = []
 	for remoteFileName in sorted(remoteFiles.keys()):
@@ -66,7 +68,9 @@ def syncFolder(localFolderPath, remoteFolder, allowIncrease = True):
 			else:
 				if localFile.timestamp != remoteFiles[localFile.name].timestamp:
 					if allowIncrease or localFile.size >= remoteFiles[localFile.name].size:
-						print('Updating File: ' + localFile.path + '(timestamp ' + str(localFile.timestamp) + '/' + str(remoteFiles[localFile.name].timestamp) + ')')
+						oldTime = datetime.datetime.fromtimestamp(remoteFiles[localFile.name].timestamp).strftime('%Y-%m-%d %H:%M:%S')
+						newTime = datetime.datetime.fromtimestamp(localFile.timestamp).strftime('%Y-%m-%d %H:%M:%S')
+						print('Updating File: ' + localFile.path + '(' + oldTime + ' -> ' + newTime + ')')
 						remoteFolder.updateFile(localFile.path, remoteFiles[localFile.name], localFile.timestamp)
 
 	''' recurse into sub folders '''
@@ -75,6 +79,28 @@ def syncFolder(localFolderPath, remoteFolder, allowIncrease = True):
 		if localFile.isFolder and localFile.name in remoteFiles:
 			syncFolder(localFile.path, remoteFiles[localFile.name], allowIncrease)
 
-googleDrive = GoogleDrive()
-# syncFolder(rootFolderPath, googleDrive.root().child('backup'), False) # only delete first
-syncFolder(rootFolderPath, googleDrive.root().child('backup'))
+if __name__ == '__main__':
+	help = 'See README.md for information. Syntax: backup.py -l <local folder> -d <drive folder> [--no-increase]'
+	localFolder = ''
+	driveFolder = ''
+	allowIncrease = True
+	try:
+		opts, args = getopt.getopt(sys.argv[1:],'hl:d:',['help', 'local-folder=', 'drive-folder=', 'no-increase'])
+	except getopt.GetoptError:
+		print(help)
+		sys.exit(2)
+	for opt, arg in opts:
+		if opt in ('-h', '--help'):
+			print(help)
+			sys.exit()
+		elif opt in ("-l", "--local-folder"):
+			localFolder = arg
+		elif opt in ("-d", "--drive-folder"):
+			driveFolder = arg
+		elif opt == '--no-increase':
+			allowIncrease = False
+	if localFolder == '' or driveFolder == '':
+		print(help)
+		sys.exit(2)
+	googleDrive = GoogleDrive()
+	syncFolder(localFolder, googleDrive.root().getAndCreateFolderPath(driveFolder), allowIncrease)

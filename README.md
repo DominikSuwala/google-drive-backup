@@ -20,12 +20,13 @@ A one-way backup of local folders onto your Google Drive
   5. Fill out the form -> Other -> Save the client secret for later
   6. On the far right, download to client_secret.json in your google-drive-backup folder.
 5. `python backup.py <local folder> <drive folder>`
-6. A popup window will show saying authenticated or something like that.
+6. A browser window will open asking for your client secret that you saved from before. Enter it.
 7. You're done!
 
 ## Syntax
 
-`python backup.py <local folder> <drive folder>`
+`python backup.py -l <local folder> -d <drive folder> [--delete-only]`
 
-- **\<local folder\>** The folder that you would like backed up. It can be absolute or relative to the google-drive-backup folder.
-- **\<drive folder\>** The folder on your Google Drive that you want to store your backed up folder. If it doesn't exist, it will be created.
+- **\<local folder\>** The folder path that you would like backed up. It can be absolute or relative to the google-drive-backup folder.
+- **\<drive folder\>** The folder path on your Google Drive that you want to store your backed up folder. If it doesn't exist, it will be created. It uses forward slashes as the folder separator.
+- **\[no-increase\]** If the phrase "no-increase" is used, there will be no new folders or files created, and only files that are a smaller size than the drive version will be uploaded. This is useful for when you need to run delete before adding more files becuase of the Google Drive size limit.

@@ -1,22 +1,14 @@
-from __future__ import print_function
 import httplib2
 import argparse
 import os
 import time
 import calendar
-
 from datetime import datetime
-
 from apiclient import discovery
 from apiclient.http import MediaFileUpload
-
 import oauth2client
 from oauth2client import client
 from oauth2client import tools
-
-import pprint
-
-''' https://console.developers.google.com/project to set things up '''
 
 class GoogleDrive:
 	SCOPES = 'https://www.googleapis.com/auth/drive'
@@ -74,9 +66,7 @@ class GoogleDrive:
 				'modifiedDate': datetime.utcfromtimestamp(timestamp).isoformat() + '.000Z'
 			}
 			if os.stat(localFilePath).st_size > 0:
-				media_body = MediaFileUpload(localFilePath, resumable = True)
-				if media_body.mimetype() is None:
-					media_body = MediaFileUpload(localFilePath, mimetype = '*/*', resumable = True)
+				media_body = MediaFileUpload(localFilePath, mimetype = '*/*', resumable = True)
 				request = self.service.files().insert(body = body, media_body = media_body)
 				response = None
 				while response is None:
@@ -88,7 +78,7 @@ class GoogleDrive:
 		def trashSelf(self):
 			for id in self.ids:
 				self.service.files().trash(fileId = id).execute()
-			
+
 		''' updates a child file from the given localFilePath and localFileName '''
 		def updateFile(self, localFilePath, remoteFile, timestamp):
 			body = {
@@ -96,15 +86,28 @@ class GoogleDrive:
 				'title': remoteFile.name,
 				'modifiedDate': datetime.utcfromtimestamp(timestamp).isoformat() + '.000Z'
 			}
-			media_body = MediaFileUpload(localFilePath, resumable = True)
-			if media_body.mimetype() is None:
-				media_body = MediaFileUpload(localFilePath, mimetype = '*/*', resumable = True)
+			media_body = MediaFileUpload(localFilePath, mimetype = '*/*', resumable = True)
 			request = self.service.files().update(fileId = remoteFile.id, body = body, media_body = media_body, setModifiedDate = True)
 			response = None
 			while response is None:
 				status, response = request.next_chunk()
 			item = response
 			return self.getFileFromItem(item)
+
+		''' creates a folder structure and returns the last folder in the list '''
+		def getAndCreateFolderPath(self, pathList):
+			if isinstance(pathList, str):
+				pathList = pathList.split('/')
+			while len(pathList) > 0 and pathList[0].strip() == '':
+				pathList.pop(0)
+			if len(pathList) > 0:
+				child = self.child(pathList[0])
+				if child == None:
+					self.createFolder(pathList[0])
+					child = self.child(pathList[0])
+				return child.getAndCreateFolderPath(pathList[1:])
+			else:
+				return self
 
 		def __init__(self, service, id, name, isFolder, timestamp, size):
 			self.service = service
@@ -139,4 +142,3 @@ class GoogleDrive:
 		self.credentials = credentials
 		self.http = credentials.authorize(httplib2.Http())
 		self.service = discovery.build('drive', 'v2', http=self.http)
-

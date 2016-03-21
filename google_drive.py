@@ -87,12 +87,18 @@ class GoogleDrive:
 				'modifiedDate': datetime.utcfromtimestamp(timestamp).isoformat() + '.000Z'
 			}
 			media_body = MediaFileUpload(localFilePath, mimetype = '*/*', resumable = True)
-			request = self.service.files().update(fileId = remoteFile.id, body = body, media_body = media_body, setModifiedDate = True)
-			response = None
-			while response is None:
-				status, response = request.next_chunk()
-			item = response
-			return self.getFileFromItem(item)
+			if media_body != None and media_body.size() > 0:
+				request = self.service.files().update(fileId = remoteFile.id, body = body, media_body = media_body, setModifiedDate = True)
+				response = None
+				while response is None:
+					status, response = request.next_chunk()
+				item = response
+				return self.getFileFromItem(item)
+			else:
+				request = self.service.files().update(fileId = remoteFile.id, body = body, setModifiedDate = True)
+				response = request.execute()
+				return self.getFileFromItem(response)
+				
 
 		''' creates a folder structure and returns the last folder in the list '''
 		def getAndCreateFolderPath(self, pathList):

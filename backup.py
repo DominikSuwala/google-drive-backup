@@ -17,17 +17,26 @@ def syncFolder(baseFolder, localFolderPath, remoteFolder, exclude, allowIncrease
 
 	''' get local files '''
 	localFiles = {}
-	for localFileName in os.listdir(localFolderPath):
-		localFilePath = os.path.join(localFolderPath, localFileName)
-		include = True
-		for e in exclude:
-			if localFilePath.startswith(baseFolder + '\\' + e):
-				include = False
-		if include:
-			localFiles[localFileName] = File(name = localFileName, path = localFilePath, isFolder = not os.path.isfile(localFilePath), timestamp = int(os.path.getmtime(localFilePath)), size = os.stat(localFilePath).st_size)
+	try:
+		for localFileName in os.listdir(localFolderPath):
+			localFilePath = os.path.join(localFolderPath, localFileName)
+			include = True
+			for e in exclude:
+				if localFilePath.startswith(baseFolder + '\\' + e):
+					include = False
+			if include:
+				try:
+					localFiles[localFileName] = File(name = localFileName, path = localFilePath, isFolder = not os.path.isfile(localFilePath), timestamp = int(os.path.getmtime(localFilePath)), size = os.stat(localFilePath).st_size)
+				except:
+					print('Could not get info on file: ' + localFileName)
+	except:
+		print('Could not get info on directory: ' + localFolderPath)
 
 	''' get remote files '''
-	remoteFiles = remoteFolder.list()
+	try:
+		remoteFiles = remoteFolder.list()
+	except:
+		remoteFiles = {}
 
 	''' remove any duplicate folders or files '''
 	remoteFilesToTrash = []
@@ -35,8 +44,11 @@ def syncFolder(baseFolder, localFolderPath, remoteFolder, exclude, allowIncrease
 		remoteFile = remoteFiles[remoteFileName]
 		if len(remoteFile.ids) > 1:
 			print('Trashing Duplicate Files: ' + localFolderPath + '\\' + remoteFile.name)
-			remoteFile.trashSelf()
-			remoteFilesToTrash.append(remoteFile.name)
+			try:
+				remoteFile.trashSelf()
+				remoteFilesToTrash.append(remoteFile.name)
+			except:
+				print('Could not trash file: ' + localFolderPath + '\\' + remoteFile.name)
 	for remoteFileName in remoteFilesToTrash:
 		del remoteFiles[remoteFileName]
 
@@ -47,13 +59,19 @@ def syncFolder(baseFolder, localFolderPath, remoteFolder, exclude, allowIncrease
 		if remoteFile.isFolder:
 			if remoteFile.name not in localFiles:
 				print('Trashing Folder: ' + localFolderPath + '\\' + remoteFile.name)
-				remoteFile.trashSelf()
-				remoteFilesToTrash.append(remoteFile.name)
+				try:
+					remoteFile.trashSelf()
+					remoteFilesToTrash.append(remoteFile.name)
+				except:
+					print('Could not trash folder: ' + localFolderPath + '\\' + remoteFile.name)
 		else:
 			if remoteFile.name not in localFiles:
 				print('Trashing File: ' + localFolderPath + '\\' + remoteFile.name)
-				remoteFile.trashSelf()
-				remoteFilesToTrash.append(remoteFile.name)
+				try:
+					remoteFile.trashSelf()
+					remoteFilesToTrash.append(remoteFile.name)
+				except:
+					print('Could not trash file: ' + localFolderPath + '\\' + remoteFile.name)
 	for remoteFileName in remoteFilesToTrash:
 		del remoteFiles[remoteFileName]
 
@@ -64,19 +82,28 @@ def syncFolder(baseFolder, localFolderPath, remoteFolder, exclude, allowIncrease
 			if localFile.name not in remoteFiles:
 				if allowIncrease:
 					print('Creating Folder: ' + localFile.path)
-					remoteFiles[localFile.name] = remoteFolder.createFolder(localFile.name)
+					try:
+						remoteFiles[localFile.name] = remoteFolder.createFolder(localFile.name)
+					except:
+						print('Could not create folder: ' + localFile.path)
 		else:
 			if localFile.name not in remoteFiles:
 				if allowIncrease:
 					print('Creating File: ' + localFile.path)
-					remoteFolder.createFile(localFile.path, localFile.name, localFile.timestamp)
+					try:
+						remoteFolder.createFile(localFile.path, localFile.name, localFile.timestamp)
+					except:
+						print('Could not create file: ' + localFile.path)
 			else:
 				if localFile.timestamp != remoteFiles[localFile.name].timestamp:
 					if allowIncrease or localFile.size >= remoteFiles[localFile.name].size:
 						oldTime = datetime.datetime.fromtimestamp(remoteFiles[localFile.name].timestamp).strftime('%Y-%m-%d %H:%M:%S')
 						newTime = datetime.datetime.fromtimestamp(localFile.timestamp).strftime('%Y-%m-%d %H:%M:%S')
-						print('Updating File: ' + localFile.path + '(' + oldTime + ' -> ' + newTime + ')')
-						remoteFolder.updateFile(localFile.path, remoteFiles[localFile.name], localFile.timestamp)
+						print('Updating File: ' + localFile.path + ' (' + oldTime + ' -> ' + newTime + ')')
+						try:
+							remoteFolder.updateFile(localFile.path, remoteFiles[localFile.name], localFile.timestamp)
+						except:
+							print('Could not update file: ' + localFile.path)
 
 	''' recurse into sub folders '''
 	for localFileName in sorted(localFiles.keys()):
@@ -113,5 +140,13 @@ if __name__ == '__main__':
 		print(help)
 		sys.exit(-1)
 	googleDrive = GoogleDrive()
-	syncFolder(baseFolder, localFolder, googleDrive.root().getAndCreateFolderPath(driveFolder), exclude, allowIncrease)
-	sys.exit(0)
+	remoteFolder = googleDrive.root().getAndCreateFolderPath(driveFolder)
+	syncFolder(baseFolder, localFolder, remoteFolder, exclude, allowIncrease)
+	
+	# write timestamp file
+	localFilePath = localFolder + '\\last_backup.txt'
+	localTime = datetime.datetime.now()
+	with open(localFilePath, 'a') as f:
+		f.write(str(localTime) + '\n')
+	remoteFolder.createFile(localFilePath, 'last_backup.txt', int(os.path.getmtime(localFilePath)))
+	input('Press ENTER to exit')
